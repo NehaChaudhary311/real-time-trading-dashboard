@@ -57,6 +57,36 @@ body {
   grid-template-columns: 1fr;
 }
 
+/* ── Login Landing ──────────────────────────────────────── */
+
+.login-landing {
+  grid-row: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--bg-primary);
+}
+
+.login-landing-brand {
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+
+.login-landing-tagline {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin-bottom: 24px;
+}
+
+.login-landing .modal {
+  border: 1px solid var(--border);
+}
+
 .app-body {
   display: grid;
   grid-template-columns: var(--sidebar-width) 1fr;

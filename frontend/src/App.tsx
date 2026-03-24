@@ -80,6 +80,22 @@ function App() {
 
   const clearNotifications = useCallback(() => setNotifications([]), []);
 
+  if (!auth.user) {
+    return (
+      <div className="app">
+        <div className="login-landing">
+          <div className="login-landing-brand">VESTED</div>
+          <p className="login-landing-tagline">Real-time trading dashboard</p>
+          <LoginModal
+            onLogin={auth.login}
+            onClose={() => {}}
+            inline
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="app">
       <Header

@@ -69,19 +69,24 @@ real-time-trading-dashboard/
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                              BACKEND  :4000                                 │
 │                                                                             │
-│  ┌─────────────────────┐         emits tick         ┌────────────────────┐  │
-│  │  MarketDataGenerator │──────────────────────────►│    WsHandler       │  │
-│  │  (GBM simulation)    │───┐                       │  WebSocket :4000/ws│  │
-│  │  1s tick interval    │   │                       └────────┬───────────┘  │
-│  └──────────┬───────────┘   │                                │              │
-│             │               │   emits tick                   │ broadcasts   │
-│             │               │                                │ price_update │
-│             ▼               ▼                                │ alert_triggered
-│  ┌──────────────────┐  ┌──────────────────┐                  │              │
-│  │ HistoricalData   │  │  AlertService    │──── triggers ────┘              │
-│  │ Service          │  │  (crossing       │    broadcastAll                 │
-│  │ (OHLCV + LRU)   │  │   detection)     │                                │
-│  └──────────────────┘  └──────────────────┘                                │
+│  ┌─────────────────────┐                            ┌────────────────────┐  │
+│  │  MarketDataGenerator │────── emits tick ────────►│    WsHandler       │  │
+│  │  (GBM simulation)    │───┐                   ┌──►│  WebSocket :4000/ws│  │
+│  │  1s tick interval    │   │                   │   └────────┬───────────┘  │
+│  └──────────────────────┘   │                   │            │              │
+│             │               │                   │            │ sends to     │
+│             │  emits tick   │  emits tick        │            │ browser:     │
+│             ▼               ▼                   │            │              │
+│  ┌──────────────────┐  ┌──────────────────┐     │            │              │
+│  │ HistoricalData   │  │  AlertService    │     │  ┌─────────┴─────────┐   │
+│  │ Service          │  │  (threshold      │     │  │  price_update     │   │
+│  │ (OHLCV candles   │  │   crossing       │     │  │  (subscribed only)│   │
+│  │  + LRU cache)    │  │   detection)     │     │  │                   │   │
+│  └──────────────────┘  └────────┬─────────┘     │  │  alert_triggered  │   │
+│                                 │               │  │  (all clients)    │   │
+│                                 │  trigger      │  └───────────────────┘   │
+│                                 │  callback     │                          │
+│                                 └───────────────┘                          │
 │                                                                             │
 │  ┌─────────────────────────────────────────────────────────────────┐        │
 │  │                     Express REST API                            │        │
