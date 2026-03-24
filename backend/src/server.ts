@@ -5,6 +5,7 @@ import { PORT } from './config.js';
 import { MarketDataGenerator } from './services/marketDataGenerator.js';
 import { HistoricalDataService } from './services/historicalDataService.js';
 import { createTickerRouter } from './routes/tickers.js';
+import { WsHandler } from './websocket/handler.js';
 
 const app = express();
 const server = createServer(app);
@@ -25,8 +26,12 @@ app.get('/api/health', (_req, res) => {
 
 app.use('/api/tickers', createTickerRouter(generator, historyService));
 
+// ── WebSocket ───────────────────────────────────────────────
+const wsHandler = new WsHandler(server, generator);
+
 server.listen(PORT, () => {
   console.log(`Backend server running on http://localhost:${PORT}`);
+  console.log(`WebSocket server listening on ws://localhost:${PORT}/ws`);
 });
 
-export { app, server, generator, historyService };
+export { app, server, generator, historyService, wsHandler };
