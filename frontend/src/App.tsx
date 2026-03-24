@@ -1,31 +1,28 @@
+import { useState } from 'react';
 import Header from './components/Header';
 import Dashboard from './components/Dashboard';
+import TickerList from './components/TickerList';
 import { useWebSocket } from './hooks/useWebSocket';
 
 function App() {
-  const { connected } = useWebSocket();
+  const ws = useWebSocket();
+  const [selectedSymbol, setSelectedSymbol] = useState('BTC/USDT');
 
   return (
     <div className="app">
-      <Header connected={connected} />
+      <Header connected={ws.connected} />
       <Dashboard
         sidebar={
-          <>
-            <div className="sidebar-header">
-              <span className="sidebar-title">Watchlist</span>
-            </div>
-            <div className="sidebar-search">
-              <input type="text" placeholder="Search Assets..." />
-            </div>
-            <div className="ticker-list">
-              {/* TickerList will go here in step 10 */}
-            </div>
-          </>
+          <TickerList
+            ws={ws}
+            selectedSymbol={selectedSymbol}
+            onSelect={setSelectedSymbol}
+          />
         }
       >
         <div className="ticker-info-bar">
           <div className="info-bar-symbol">
-            <span className="info-bar-symbol-text">BTC/USDT</span>
+            <span className="info-bar-symbol-text">{selectedSymbol}</span>
             <span className="info-bar-tag">Perpetual</span>
           </div>
           <span className="info-bar-price">$87,250.00</span>
