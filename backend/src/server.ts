@@ -5,6 +5,7 @@ import { PORT } from './config.js';
 import { MarketDataGenerator } from './services/marketDataGenerator.js';
 import { HistoricalDataService } from './services/historicalDataService.js';
 import { createTickerRouter } from './routes/tickers.js';
+import { createAuthRouter } from './routes/auth.js';
 import { WsHandler } from './websocket/handler.js';
 
 const app = express();
@@ -24,6 +25,7 @@ app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: Date.now() });
 });
 
+app.use('/api/auth', createAuthRouter());
 app.use('/api/tickers', createTickerRouter(generator, historyService));
 
 // ── WebSocket ───────────────────────────────────────────────

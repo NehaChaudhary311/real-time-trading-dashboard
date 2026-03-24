@@ -1,8 +1,28 @@
+import { useState, useRef, useEffect } from 'react';
+import type { AuthUser } from '../services/api';
+
 interface HeaderProps {
   connected: boolean;
+  user: AuthUser | null;
+  onLoginClick: () => void;
+  onLogout: () => void;
 }
 
-export default function Header({ connected }: HeaderProps) {
+export default function Header({ connected, user, onLoginClick, onLogout }: HeaderProps) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [menuOpen]);
+
   return (
     <header className="header">
       <div className="header-brand">VESTED</div>
@@ -34,7 +54,41 @@ export default function Header({ connected }: HeaderProps) {
           </svg>
         </div>
 
-        <div className="header-avatar" title="User">U</div>
+        {/* Avatar + dropdown */}
+        <div className="avatar-wrapper" ref={menuRef}>
+          {user ? (
+            <div
+              className="header-avatar"
+              onClick={() => setMenuOpen((o) => !o)}
+              style={{ cursor: 'pointer' }}
+            >
+              {user.displayName.charAt(0).toUpperCase()}
+            </div>
+          ) : (
+            <div
+              className="header-avatar"
+              title="Sign in"
+              onClick={onLoginClick}
+              style={{ cursor: 'pointer', opacity: 0.5 }}
+            >
+              ?
+            </div>
+          )}
+
+          {menuOpen && user && (
+            <div className="avatar-menu">
+              <div className="avatar-menu-name">{user.displayName}</div>
+              <div className="avatar-menu-username">@{user.username}</div>
+              <div className="avatar-menu-divider" />
+              <button
+                className="avatar-menu-item"
+                onClick={() => { onLogout(); setMenuOpen(false); }}
+              >
+                Sign out
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );
