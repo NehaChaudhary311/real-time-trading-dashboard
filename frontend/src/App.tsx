@@ -2,6 +2,7 @@ import { useState } from 'react';
 import Header from './components/Header';
 import Dashboard from './components/Dashboard';
 import TickerList from './components/TickerList';
+import TickerInfoBar from './components/TickerInfoBar';
 import { useWebSocket } from './hooks/useWebSocket';
 
 function App() {
@@ -20,29 +21,7 @@ function App() {
           />
         }
       >
-        <div className="ticker-info-bar">
-          <div className="info-bar-symbol">
-            <span className="info-bar-symbol-text">{selectedSymbol}</span>
-            <span className="info-bar-tag">Perpetual</span>
-          </div>
-          <span className="info-bar-price">$87,250.00</span>
-          <div className="info-bar-stat">
-            <span className="info-bar-label">24H Change</span>
-            <span className="info-bar-value positive">+1.24%</span>
-          </div>
-          <div className="info-bar-stat">
-            <span className="info-bar-label">24H High</span>
-            <span className="info-bar-value">$88,100.00</span>
-          </div>
-          <div className="info-bar-stat">
-            <span className="info-bar-label">24H Low</span>
-            <span className="info-bar-value">$86,200.00</span>
-          </div>
-          <div className="info-bar-stat">
-            <span className="info-bar-label">24H Volume</span>
-            <span className="info-bar-value">$1.2B</span>
-          </div>
-        </div>
+        <TickerInfoBar symbol={selectedSymbol} ws={ws} />
 
         <div className="interval-bar">
           {['1M', '5M', '15M', '1H', '4H', '1D'].map((label, i) => (

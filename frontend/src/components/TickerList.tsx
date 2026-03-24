@@ -52,7 +52,8 @@ export default function TickerList({ ws, selectedSymbol, onSelect }: TickerListP
 
   useEffect(() => {
     return ws.onTick(handleTick);
-  }, [ws, handleTick]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ws.onTick, handleTick]);
 
   const filtered = search
     ? tickers.filter(
