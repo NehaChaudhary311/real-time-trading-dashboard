@@ -1,10 +1,13 @@
 import Header from './components/Header';
 import Dashboard from './components/Dashboard';
+import { useWebSocket } from './hooks/useWebSocket';
 
 function App() {
+  const { connected } = useWebSocket();
+
   return (
     <div className="app">
-      <Header connected={true} />
+      <Header connected={connected} />
       <Dashboard
         sidebar={
           <>
