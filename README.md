@@ -211,7 +211,7 @@ POST /api/auth/login
 **Body:**
 
 ```json
-{ "username": "admin", "password": "password" }
+{ "username": "admin", "password": "admin" }
 ```
 
 **200 Response:**

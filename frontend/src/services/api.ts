@@ -1,8 +1,13 @@
+import { sha256 } from 'js-sha256';
 import type { TickerSnapshot, OHLCVCandle, Interval, Alert, AlertDirection, AlertFrequency } from '../types';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+const API_BASE = import.meta.env.VITE_API_URL || '';
 
 // ── Auth ────────────────────────────────────────────────────
+
+function hashPassword(password: string): string {
+  return sha256(password);
+}
 
 export interface AuthUser {
   id: string;
@@ -16,10 +21,12 @@ interface LoginResponse {
 }
 
 export async function login(username: string, password: string): Promise<LoginResponse> {
+  const hashed = hashPassword(password);
   const res = await fetch(`${API_BASE}/api/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, password }),
+    credentials: 'include',
+    body: JSON.stringify({ username, password: hashed }),
   });
 
   if (!res.ok) {
@@ -30,10 +37,17 @@ export async function login(username: string, password: string): Promise<LoginRe
   return res.json() as Promise<LoginResponse>;
 }
 
+export async function logout(): Promise<void> {
+  await fetch(`${API_BASE}/api/auth/logout`, {
+    method: 'POST',
+    credentials: 'include',
+  });
+}
+
 // ── Data ────────────────────────────────────────────────────
 
 async function fetchJson<T>(url: string): Promise<T> {
-  const res = await fetch(url);
+  const res = await fetch(url, { credentials: 'include' });
   if (!res.ok) {
     throw new Error(`API error ${res.status}: ${res.statusText}`);
   }
@@ -66,22 +80,17 @@ export async function fetchHistory(
   return data.candles;
 }
 
-// ── Alerts ──────────────────────────────────────────────────
+// ── Alerts (auth via HttpOnly cookie — no token param needed) ─
 
-function authHeaders(token: string): HeadersInit {
-  return { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
-}
-
-export async function fetchAlerts(token: string): Promise<Alert[]> {
+export async function fetchAlerts(): Promise<Alert[]> {
   const res = await fetch(`${API_BASE}/api/alerts`, {
-    headers: authHeaders(token),
+    credentials: 'include',
   });
   if (!res.ok) throw new Error('Failed to fetch alerts');
   return res.json() as Promise<Alert[]>;
 }
 
 export async function createAlert(
-  token: string,
   symbol: string,
   threshold: number,
   direction: AlertDirection,
@@ -89,16 +98,17 @@ export async function createAlert(
 ): Promise<Alert> {
   const res = await fetch(`${API_BASE}/api/alerts`, {
     method: 'POST',
-    headers: authHeaders(token),
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
     body: JSON.stringify({ symbol, threshold, direction, frequency }),
   });
   if (!res.ok) throw new Error('Failed to create alert');
   return res.json() as Promise<Alert>;
 }
 
-export async function deleteAlert(token: string, id: string): Promise<void> {
+export async function deleteAlert(id: string): Promise<void> {
   await fetch(`${API_BASE}/api/alerts/${id}`, {
     method: 'DELETE',
-    headers: authHeaders(token),
+    credentials: 'include',
   });
 }

@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import { createServer } from 'http';
 import { PORT } from './config.js';
 import { MarketDataGenerator } from './services/marketDataGenerator.js';
@@ -13,8 +14,9 @@ import { WsHandler } from './websocket/handler.js';
 const app = express();
 const server = createServer(app);
 
-app.use(cors());
+app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
+app.use(cookieParser());
 
 // ── Services ────────────────────────────────────────────────
 const generator = new MarketDataGenerator();

@@ -7,7 +7,7 @@ metadata:
     app: backend
     app.kubernetes.io/part-of: trading-dashboard
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: backend

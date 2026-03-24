@@ -36,33 +36,32 @@ function App() {
   }, [ws.onTick]);
 
   useEffect(() => {
-    if (!auth.token) { setAlerts([]); return; }
-    fetchAlerts(auth.token).then(setAlerts).catch(() => {});
-  }, [auth.token]);
+    if (!auth.user) { setAlerts([]); return; }
+    fetchAlerts().then(setAlerts).catch(() => {});
+  }, [auth.user]);
 
   const handleAlertClick = useCallback((symbol: string) => {
-    if (!auth.token) { setShowLogin(true); return; }
+    if (!auth.user) { setShowLogin(true); return; }
     setAlertSymbol(symbol);
-  }, [auth.token]);
+  }, [auth.user]);
 
   const handleAlertSubmit = useCallback(async (threshold: number, direction: AlertDirection, frequency: AlertFrequency) => {
-    if (!auth.token || !alertSymbol) return;
+    if (!auth.user || !alertSymbol) return;
     try {
-      const alert = await createAlert(auth.token, alertSymbol, threshold, direction, frequency);
+      const alert = await createAlert(alertSymbol, threshold, direction, frequency);
       setAlerts((prev) => [...prev, alert]);
     } catch { /* ignore */ }
     setAlertSymbol(null);
-  }, [auth.token, alertSymbol]);
+  }, [auth.user, alertSymbol]);
 
   const handleAlertDelete = useCallback(async (id: string) => {
-    if (!auth.token) return;
+    if (!auth.user) return;
     try {
-      await deleteAlert(auth.token, id);
+      await deleteAlert(id);
       setAlerts((prev) => prev.filter((a) => a.id !== id));
     } catch { /* ignore */ }
-  }, [auth.token]);
+  }, [auth.user]);
 
-  // Listen for alert_triggered through the main WS connection
   useEffect(() => {
     return ws.onAlert((data) => {
       const { symbol: sym, threshold: th, direction: dir, currentPrice } = data;
