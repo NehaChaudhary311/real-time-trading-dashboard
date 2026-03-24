@@ -1,0 +1,8 @@
+node_modules
+dist
+coverage
+.eslintrc*
+eslint.config.js
+jest.config.*
+src/__tests__
+*.md
