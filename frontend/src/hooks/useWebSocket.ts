@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import type { PriceTick, WsServerMessage } from '../types';
+import type { PriceTick, WsServerMessage, WsAlertTriggeredMessage } from '../types';
 
 const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:4000/ws';
 
@@ -12,6 +12,7 @@ export interface UseWebSocketReturn {
   unsubscribe: (symbols: string[]) => void;
   lastTick: PriceTick | null;
   onTick: (handler: (tick: PriceTick) => void) => () => void;
+  onAlert: (handler: (data: WsAlertTriggeredMessage['data']) => void) => () => void;
 }
 
 export function useWebSocket(): UseWebSocketReturn {
@@ -20,6 +21,7 @@ export function useWebSocket(): UseWebSocketReturn {
   const reconnectTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const subscribedSymbols = useRef<Set<string>>(new Set());
   const tickHandlers = useRef<Set<(tick: PriceTick) => void>>(new Set());
+  const alertHandlers = useRef<Set<(data: WsAlertTriggeredMessage['data']) => void>>(new Set());
 
   const [connected, setConnected] = useState(false);
   const [lastTick, setLastTick] = useState<PriceTick | null>(null);
@@ -46,6 +48,11 @@ export function useWebSocket(): UseWebSocketReturn {
     return () => { tickHandlers.current.delete(handler); };
   }, []);
 
+  const onAlert = useCallback((handler: (data: WsAlertTriggeredMessage['data']) => void) => {
+    alertHandlers.current.add(handler);
+    return () => { alertHandlers.current.delete(handler); };
+  }, []);
+
   const connect = useCallback(() => {
     if (wsRef.current) {
       wsRef.current.close();
@@ -59,7 +66,6 @@ export function useWebSocket(): UseWebSocketReturn {
       setConnected(true);
       reconnectDelay.current = MIN_RECONNECT_MS;
 
-      // Re-subscribe to previously tracked symbols
       if (subscribedSymbols.current.size > 0) {
         send({ type: 'subscribe', symbols: Array.from(subscribedSymbols.current) });
       }
@@ -71,6 +77,8 @@ export function useWebSocket(): UseWebSocketReturn {
         if (msg.type === 'price_update') {
           setLastTick(msg.data);
           tickHandlers.current.forEach((h) => h(msg.data));
+        } else if (msg.type === 'alert_triggered') {
+          alertHandlers.current.forEach((h) => h(msg.data));
         }
       } catch {
         // ignore malformed messages
@@ -110,5 +118,5 @@ export function useWebSocket(): UseWebSocketReturn {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return { connected, subscribe, unsubscribe, lastTick, onTick };
+  return { connected, subscribe, unsubscribe, lastTick, onTick, onAlert };
 }

@@ -111,6 +111,15 @@ export class WsHandler {
     }
   }
 
+  broadcastAll(message: WsServerMessage): void {
+    const payload = JSON.stringify(message);
+    for (const [ws] of this.clients) {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(payload);
+      }
+    }
+  }
+
   // ── Heartbeat ───────────────────────────────────────────
 
   private heartbeat(): void {

@@ -1,27 +1,37 @@
 import { useState, useRef, useEffect } from 'react';
 import type { AuthUser } from '../services/api';
 
+export interface Notification {
+  id: string;
+  text: string;
+  time: number;
+}
+
 interface HeaderProps {
   connected: boolean;
   user: AuthUser | null;
+  notifications: Notification[];
   onLoginClick: () => void;
   onLogout: () => void;
+  onClearNotifications: () => void;
 }
 
-export default function Header({ connected, user, onLoginClick, onLogout }: HeaderProps) {
+export default function Header({ connected, user, notifications, onLoginClick, onLogout, onClearNotifications }: HeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [bellOpen, setBellOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const bellRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!menuOpen) return;
     const handleClick = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setMenuOpen(false);
-      }
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+      if (bellRef.current && !bellRef.current.contains(e.target as Node)) setBellOpen(false);
     };
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
-  }, [menuOpen]);
+  }, []);
+
+  const unread = notifications.length;
 
   return (
     <header className="header">
@@ -44,6 +54,47 @@ export default function Header({ connected, user, onLoginClick, onLogout }: Head
             <rect x="9" y="5" width="3" height="10" rx="0.5" fill="currentColor" />
             <rect x="13" y="1" width="3" height="14" rx="0.5" fill="currentColor" opacity={connected ? 1 : 0.3} />
           </svg>
+        </div>
+
+        {/* Bell / Notifications */}
+        <div className="bell-wrapper" ref={bellRef}>
+          <div
+            className="header-icon"
+            title="Notifications"
+            onClick={() => setBellOpen((o) => !o)}
+            style={{ cursor: 'pointer', position: 'relative' }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+              <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+            </svg>
+            {unread > 0 && <span className="bell-badge">{unread > 9 ? '9+' : unread}</span>}
+          </div>
+
+          {bellOpen && (
+            <div className="bell-menu">
+              <div className="bell-menu-header">
+                <span>Notifications</span>
+                {unread > 0 && (
+                  <button className="bell-clear-btn" onClick={onClearNotifications}>Clear all</button>
+                )}
+              </div>
+              <div className="bell-menu-list">
+                {notifications.length === 0 ? (
+                  <div className="bell-menu-empty">No notifications</div>
+                ) : (
+                  notifications.map((n) => (
+                    <div key={n.id} className="bell-menu-item">
+                      <div className="bell-menu-item-text">{n.text}</div>
+                      <div className="bell-menu-item-time">
+                        {new Date(n.time).toLocaleTimeString()}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Settings icon */}

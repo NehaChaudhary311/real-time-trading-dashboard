@@ -1,27 +1,27 @@
 import { useState, useEffect, useCallback } from 'react';
 import TickerCard from './TickerCard';
 import { fetchTickers } from '../services/api';
-import type { TickerSnapshot, PriceTick } from '../types';
+import type { TickerSnapshot, PriceTick, Alert } from '../types';
 import type { UseWebSocketReturn } from '../hooks/useWebSocket';
 
 interface TickerListProps {
   ws: UseWebSocketReturn;
   selectedSymbol: string;
   onSelect: (symbol: string) => void;
+  onAlertClick?: (symbol: string) => void;
+  activeAlerts?: Alert[];
 }
 
-export default function TickerList({ ws, selectedSymbol, onSelect }: TickerListProps) {
+export default function TickerList({ ws, selectedSymbol, onSelect, onAlertClick, activeAlerts }: TickerListProps) {
   const [tickers, setTickers] = useState<TickerSnapshot[]>([]);
   const [search, setSearch] = useState('');
 
-  // Fetch initial ticker list from REST API
   useEffect(() => {
     fetchTickers()
       .then(setTickers)
-      .catch(() => {/* TODO: log error */});
+      .catch(() => {});
   }, []);
 
-  // Subscribe to all symbols once connected
   useEffect(() => {
     if (!ws.connected || tickers.length === 0) return;
     const symbols = tickers.map((t) => t.symbol);
@@ -30,7 +30,6 @@ export default function TickerList({ ws, selectedSymbol, onSelect }: TickerListP
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ws.connected, tickers.length]);
 
-  // Update ticker prices from WS ticks
   const handleTick = useCallback((tick: PriceTick) => {
     setTickers((prev) =>
       prev.map((t) =>
@@ -54,6 +53,10 @@ export default function TickerList({ ws, selectedSymbol, onSelect }: TickerListP
     return ws.onTick(handleTick);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ws.onTick, handleTick]);
+
+  const alertSymbols = new Set(
+    (activeAlerts ?? []).filter((a) => !a.triggered).map((a) => a.symbol),
+  );
 
   const filtered = search
     ? tickers.filter(
@@ -83,6 +86,8 @@ export default function TickerList({ ws, selectedSymbol, onSelect }: TickerListP
             ticker={t}
             selected={t.symbol === selectedSymbol}
             onClick={() => onSelect(t.symbol)}
+            onAlertClick={onAlertClick}
+            hasActiveAlert={alertSymbols.has(t.symbol)}
           />
         ))}
       </div>

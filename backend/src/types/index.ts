@@ -50,12 +50,16 @@ export interface OHLCVCandle {
 
 export type AlertDirection = 'above' | 'below';
 
+export type AlertFrequency = 'once' | 'every_time';
+
 export interface Alert {
   id: string;
   symbol: string;
   threshold: number;
   direction: AlertDirection;
+  frequency: AlertFrequency;
   triggered: boolean;
+  triggerCount: number;
   createdAt: number;
   triggeredAt?: number;
 }

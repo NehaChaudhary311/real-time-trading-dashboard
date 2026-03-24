@@ -1,4 +1,4 @@
-import type { TickerSnapshot, OHLCVCandle, Interval } from '../types';
+import type { TickerSnapshot, OHLCVCandle, Interval, Alert, AlertDirection, AlertFrequency } from '../types';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000';
 
@@ -64,4 +64,41 @@ export async function fetchHistory(
     `${API_BASE}/api/tickers/${encoded}/history?${params}`,
   );
   return data.candles;
+}
+
+// ── Alerts ──────────────────────────────────────────────────
+
+function authHeaders(token: string): HeadersInit {
+  return { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
+}
+
+export async function fetchAlerts(token: string): Promise<Alert[]> {
+  const res = await fetch(`${API_BASE}/api/alerts`, {
+    headers: authHeaders(token),
+  });
+  if (!res.ok) throw new Error('Failed to fetch alerts');
+  return res.json() as Promise<Alert[]>;
+}
+
+export async function createAlert(
+  token: string,
+  symbol: string,
+  threshold: number,
+  direction: AlertDirection,
+  frequency: AlertFrequency = 'once',
+): Promise<Alert> {
+  const res = await fetch(`${API_BASE}/api/alerts`, {
+    method: 'POST',
+    headers: authHeaders(token),
+    body: JSON.stringify({ symbol, threshold, direction, frequency }),
+  });
+  if (!res.ok) throw new Error('Failed to create alert');
+  return res.json() as Promise<Alert>;
+}
+
+export async function deleteAlert(token: string, id: string): Promise<void> {
+  await fetch(`${API_BASE}/api/alerts/${id}`, {
+    method: 'DELETE',
+    headers: authHeaders(token),
+  });
 }
