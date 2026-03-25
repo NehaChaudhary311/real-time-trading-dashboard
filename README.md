@@ -74,7 +74,7 @@ Vested is a simulated trading dashboard that streams live prices for six tickers
 | Backend     | Node.js, Express, TypeScript, ws                             |
 | Auth        | JWT (mock)                                                   |
 | Caching     | LRU Cache                                                    |
-| Testing     | Jest, ts-jest, Supertest                                     |
+| Testing     | Jest, Vitest, React Testing Library, Supertest               |
 | Containers  | Docker, Docker Compose, Kubernetes, Nginx                    |
 | Dev Tooling | tsx (watch mode), ESLint, Prettier                           |
 
@@ -168,17 +168,33 @@ minikube service frontend -n trading-dashboard
 
 ## Running Tests
 
-```bash
-cd backend
-npm test
-```
-
-Watch mode:
+### Backend
 
 ```bash
 cd backend
-npm run test:watch
+npm test                  # run all tests
+npm run test:coverage     # run tests with coverage table
+npm run test:watch        # watch mode
 ```
+
+### Frontend
+
+```bash
+cd frontend
+npm test                  # run all tests
+npm run test:coverage     # run tests with coverage table
+npm run test:watch        # watch mode
+```
+
+### Test Coverage
+
+**Frontend** — 96 tests, 99%+ statement coverage
+
+![Frontend Test Coverage](documentation-assets/frontend-test-coverage.png)
+
+**Backend** — 95 tests, 98%+ statement coverage
+
+![Backend Test Coverage](documentation-assets/backend-test-coverage.png)
 
 ## Assumptions & Trade-offs
 
@@ -194,5 +210,5 @@ npm run test:watch
 - **In-memory over a database**: No Postgres/Redis setup needed, but nothing persists across restarts. Keeps the project zero-config.
 - **Simulated prices over a real API**: Full control over tick rate, no API keys or rate limits to deal with. Prices aren't real, but that's fine for a demo.
 - **Mock auth over full auth**: JWT issuance and middleware are real, but there's no registration, refresh tokens, or proper password hashing. Didn't want auth complexity to overshadow the actual dashboard.
-- **No automation tests**: Would add React Testing Library / Cypress if this were going to production.
+- **No automation tests**: Would add Playwright/Cypress if this were going to production.
 - **Alerts broadcast to all clients**: `alert_triggered` goes to every connected client, not just the owner. Fine for single-user; would need scoping in a multi-user setup.
