@@ -75,6 +75,7 @@ Vested is a simulated trading dashboard that streams live prices for six tickers
 | Auth        | JWT (mock)                                                   |
 | Caching     | LRU Cache                                                    |
 | Testing     | Jest, ts-jest, Supertest                                     |
+| Containers  | Docker, Docker Compose, Kubernetes, Nginx                    |
 | Dev Tooling | tsx (watch mode), ESLint, Prettier                           |
 
 ## Setup & Running
@@ -127,6 +128,43 @@ All optional — defaults work out of the box.
 | `JWT_SECRET`   | `dev-secret-do-not-use-in-prod` | JWT signing secret   |
 | `VITE_API_URL` | `http://localhost:4000`         | Frontend API base    |
 | `VITE_WS_URL`  | `ws://localhost:4000/ws`        | Frontend WS endpoint |
+
+## Docker
+
+```bash
+docker compose up --build
+```
+
+App runs at [http://localhost:3000](http://localhost:3000). Backend API and WebSocket are reverse-proxied through Nginx, so everything goes through port 3000.
+
+```bash
+docker compose up --build -d   # detached
+docker compose down             # stop & remove
+```
+
+## Kubernetes
+
+Manifests are in `k8s/`. Requires a running cluster (e.g. minikube, Docker Desktop, or a cloud provider).
+
+```bash
+# Build images (if using minikube, point to its Docker daemon first)
+docker build -t trading-dashboard-backend:latest ./backend
+docker build -t trading-dashboard-frontend:latest --build-arg VITE_API_URL="" --build-arg VITE_WS_URL="" ./frontend
+
+# Apply manifests
+kubectl apply -f k8s/namespace.yaml
+kubectl apply -f k8s/backend.yaml
+kubectl apply -f k8s/frontend.yaml
+
+# Check status
+kubectl get pods -n trading-dashboard
+```
+
+The frontend Service is type `LoadBalancer` (port 80 -> 3000). On minikube:
+
+```bash
+minikube service frontend -n trading-dashboard
+```
 
 ## Running Tests
 
