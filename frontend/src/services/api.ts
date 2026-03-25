@@ -107,8 +107,9 @@ export async function createAlert(
 }
 
 export async function deleteAlert(id: string): Promise<void> {
-  await fetch(`${API_BASE}/api/alerts/${id}`, {
+  const res = await fetch(`${API_BASE}/api/alerts/${id}`, {
     method: 'DELETE',
     credentials: 'include',
   });
+  if (!res.ok) throw new Error('Failed to delete alert');
 }

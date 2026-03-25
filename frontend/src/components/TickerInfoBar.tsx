@@ -46,7 +46,7 @@ export default function TickerInfoBar({ symbol, ws }: TickerInfoBarProps) {
   const isPositive = changePercent >= 0;
 
   return (
-    <div className="ticker-info-bar">
+    <div className={`ticker-info-bar${ws.connected ? '' : ' stale'}`}>
       <div className="info-bar-symbol">
         <span className="info-bar-symbol-text">{symbol}</span>
         <span className="info-bar-tag">Perpetual</span>

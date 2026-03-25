@@ -8,8 +8,10 @@ import IntervalSelector from './components/IntervalSelector';
 import PriceChart from './components/PriceChart';
 import LoginModal from './components/LoginModal';
 import AlertModal from './components/AlertModal';
+import ToastContainer from './components/ToastContainer';
 import { useWebSocket } from './hooks/useWebSocket';
 import { useAuth } from './hooks/useAuth';
+import { useToast } from './context/ToastContext';
 import { fetchAlerts, createAlert, deleteAlert } from './services/api';
 import type { Interval, Alert, AlertDirection, AlertFrequency, PriceTick } from './types';
 import type { ChartType } from './components/IntervalSelector';
@@ -17,6 +19,7 @@ import type { ChartType } from './components/IntervalSelector';
 function App() {
   const ws = useWebSocket();
   const auth = useAuth();
+  const { addToast } = useToast();
   const [selectedSymbol, setSelectedSymbol] = useState('BTC/USDT');
   const [interval, setInterval] = useState<Interval>('1h');
   const [chartType, setChartType] = useState<ChartType>('candlestick');
@@ -37,7 +40,10 @@ function App() {
 
   useEffect(() => {
     if (!auth.user) { setAlerts([]); return; }
-    fetchAlerts().then(setAlerts).catch(() => {});
+    fetchAlerts()
+      .then(setAlerts)
+      .catch(() => addToast('Failed to load alerts', 'error'));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [auth.user]);
 
   const handleAlertClick = useCallback((symbol: string) => {
@@ -50,17 +56,23 @@ function App() {
     try {
       const alert = await createAlert(alertSymbol, threshold, direction, frequency);
       setAlerts((prev) => [...prev, alert]);
-    } catch { /* ignore */ }
-    setAlertSymbol(null);
-  }, [auth.user, alertSymbol]);
+      setAlertSymbol(null);
+      addToast('Alert created', 'success');
+    } catch {
+      addToast('Failed to create alert. Please try again.', 'error');
+    }
+  }, [auth.user, alertSymbol, addToast]);
 
   const handleAlertDelete = useCallback(async (id: string) => {
     if (!auth.user) return;
     try {
       await deleteAlert(id);
       setAlerts((prev) => prev.filter((a) => a.id !== id));
-    } catch { /* ignore */ }
-  }, [auth.user]);
+      addToast('Alert deleted', 'success');
+    } catch {
+      addToast('Failed to delete alert. Please try again.', 'error');
+    }
+  }, [auth.user, addToast]);
 
   useEffect(() => {
     return ws.onAlert((data) => {
@@ -82,6 +94,7 @@ function App() {
   if (!auth.user) {
     return (
       <div className="app">
+        <ToastContainer />
         <div className="login-landing">
           <div className="login-landing-brand">VESTED</div>
           <p className="login-landing-tagline">Real-time trading dashboard</p>
@@ -97,6 +110,7 @@ function App() {
 
   return (
     <div className="app">
+      <ToastContainer />
       <Header
         connected={ws.connected}
         user={auth.user}

@@ -141,7 +141,7 @@ export default function PriceChart({ symbol, interval, chartType, ws }: PriceCha
   }, [candles, chartType]);
 
   return (
-    <div className="chart-container" style={{ position: 'relative' }}>
+    <div className={`chart-container${ws.connected ? '' : ' stale'}`} style={{ position: 'relative' }}>
       {loading && (
         <div style={{
           position: 'absolute',
@@ -154,6 +154,11 @@ export default function PriceChart({ symbol, interval, chartType, ws }: PriceCha
           zIndex: 2,
         }}>
           Loading chart...
+        </div>
+      )}
+      {!ws.connected && (
+        <div className="stale-overlay">
+          <span>LIVE DATA PAUSED</span>
         </div>
       )}
       <div ref={containerRef} style={{ width: '100%', height: '100%' }} />

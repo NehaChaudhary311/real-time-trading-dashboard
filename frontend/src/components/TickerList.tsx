@@ -55,7 +55,7 @@ export default function TickerList({ ws, selectedSymbol, onSelect, onAlertClick,
   }, [ws.onTick, handleTick]);
 
   const alertSymbols = new Set(
-    (activeAlerts ?? []).filter((a) => !a.triggered).map((a) => a.symbol),
+    (activeAlerts ?? []).map((a) => a.symbol),
   );
 
   const filtered = search
@@ -79,17 +79,33 @@ export default function TickerList({ ws, selectedSymbol, onSelect, onAlertClick,
           onChange={(e) => setSearch(e.target.value)}
         />
       </div>
-      <div className="ticker-list">
-        {filtered.map((t) => (
-          <TickerCard
-            key={t.symbol}
-            ticker={t}
-            selected={t.symbol === selectedSymbol}
-            onClick={() => onSelect(t.symbol)}
-            onAlertClick={onAlertClick}
-            hasActiveAlert={alertSymbols.has(t.symbol)}
-          />
-        ))}
+      <div className={`ticker-list${ws.connected ? '' : ' stale'}`}>
+        {tickers.length === 0
+          ? Array.from({ length: 6 }, (_, i) => (
+              <div key={i} className="ticker-card skeleton-card">
+                <div className="ticker-card-main">
+                  <div className="skeleton skeleton-icon" />
+                  <div className="ticker-info">
+                    <div className="skeleton skeleton-line-short" />
+                    <div className="skeleton skeleton-line-shorter" />
+                  </div>
+                  <div className="ticker-price-col">
+                    <div className="skeleton skeleton-line-price" />
+                    <div className="skeleton skeleton-line-change" />
+                  </div>
+                </div>
+              </div>
+            ))
+          : filtered.map((t) => (
+              <TickerCard
+                key={t.symbol}
+                ticker={t}
+                selected={t.symbol === selectedSymbol}
+                onClick={() => onSelect(t.symbol)}
+                onAlertClick={onAlertClick}
+                hasActiveAlert={alertSymbols.has(t.symbol)}
+              />
+            ))}
       </div>
     </>
   );
