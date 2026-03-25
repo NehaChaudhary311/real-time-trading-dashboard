@@ -49,6 +49,8 @@ Vested is a simulated trading dashboard that streams live prices for six tickers
 
 ![Architecture Diagram](documentation-assets/architecture-diagram.png)
 
+[View on Excalidraw](https://excalidraw.com/#json=QTD2E6-u15FfXszScpg8t,sy_rx2jrfdIF_RfcEOxMTw) (if above picture isn't clear)
+
 **Backend (Express + WebSocket, port 4000)**
 
 - `MarketDataGenerator` — ticks every second using GBM, emits price events
