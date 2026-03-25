@@ -1,132 +1,81 @@
-# Vested — Real-Time Trading Dashboard
+# Vested: Real-time trading dashboard
 
-A full-stack real-time trading dashboard with live price simulation, interactive charting, and price alerts. Built with React, TypeScript, Express, and WebSockets.
+Full-stack trading dashboard with live price simulation, interactive charts, and price alerts. React + TypeScript on the frontend, Express + WebSocket on the backend.
 
-![Dashboard Preview](assets/Screenshot_2026-03-24_at_1.26.19_PM-dfff237d-836f-4b99-81e5-1f1e16df9e3e.png)
+**[Figma Design](https://www.figma.com/design/LtTF1hBR4nTshNHI2wLYhx/Real-Time-Dashboard?node-id=1-22&t=TCDsGy4yQNDJXh5Q-0)**
 
 ## Overview
 
-Vested simulates a live trading environment with six tickers (crypto + equities), streaming price updates at 1-second intervals via WebSocket. Users can browse a watchlist, view interactive candlestick/area charts across multiple timeframes, set price alerts with customizable triggers, and receive real-time notifications.
+Vested is a simulated trading dashboard that streams live prices for six tickers (BTC/USDT, ETH/USDT, SOL/USDT, AAPL, TSLA, NVDA) over WebSocket at 1-second intervals. You get a searchable watchlist, candlestick and line charts across six timeframes, price alerts with real-time notifications, and mock JWT auth.
 
-**Key features:**
+## Features
 
-- Live price simulation using geometric Brownian motion (random walk with drift)
-- 30 days of generated historical OHLCV data across 6 intervals (1m, 5m, 15m, 1h, 4h, 1d)
-- Interactive charting powered by TradingView Lightweight Charts
-- Price alerts with threshold-crossing detection (above/below, once/every time)
+- Live WebSocket price streaming (1s tick interval)
+- Price simulation using geometric Brownian motion
+- 30 days of generated OHLCV history across 6 intervals (1m, 5m, 15m, 1h, 4h, 1d)
+- Candlestick and area charts via TradingView Lightweight Charts
+- Searchable watchlist with real-time price and 24h change
+- Price alerts — above/below threshold, "once" or "every time" trigger modes
 - Bell icon notification center for triggered alerts
-- Mock JWT authentication
-- Dark theme UI with responsive layout
+- Create, edit, and delete alerts per ticker
+- Mock JWT login/logout with protected routes
+- Auto-reconnecting WebSocket with exponential backoff (1s -> 30s cap)
+- LRU cache on historical data responses
+- Dark theme, responsive layout
+
+## Screenshots
+
+### Sign In
+
+![Sign In](documentation-assets/sign-in.png)
+
+### Line Chart View
+
+![Line Chart View](documentation-assets/line-view.png)
+
+### Candlestick Chart View
+
+![Candlestick Chart View](documentation-assets/candlestick-view.png)
+
+### Set Alert
+
+![Set Alert](documentation-assets/set-alert.png)
+
+### Manage Alerts
+
+![Manage Alerts](documentation-assets/manage-alerts.png)
 
 ## Architecture
 
-```
-real-time-trading-dashboard/
-├── backend/                 # Express + WebSocket server (TypeScript)
-│   └── src/
-│       ├── config.ts                # Ports, tickers, intervals, JWT config
-│       ├── server.ts                # App entry — wires services, routes, WS
-│       ├── types/index.ts           # Shared TypeScript interfaces
-│       ├── services/
-│       │   ├── marketDataGenerator.ts   # GBM-based price simulation (EventEmitter)
-│       │   ├── historicalDataService.ts # Mock OHLCV history + LRU cache
-│       │   └── alertService.ts          # Threshold-crossing alert evaluation
-│       ├── routes/
-│       │   ├── auth.ts              # POST /api/auth/login (mock JWT)
-│       │   ├── tickers.ts           # GET /api/tickers, GET /api/tickers/:symbol/history
-│       │   └── alerts.ts            # CRUD /api/alerts (JWT-protected)
-│       ├── middleware/
-│       │   └── auth.ts              # JWT verification middleware
-│       ├── websocket/
-│       │   └── handler.ts           # WS subscription management + broadcasting
-│       └── __tests__/               # Jest unit & integration tests
-│
-├── frontend/                # React + Vite (TypeScript)
-│   └── src/
-│       ├── App.tsx                  # Root component — layout, state, alert wiring
-│       ├── types/index.ts           # Mirrored backend types
-│       ├── services/api.ts          # REST API client (tickers, history, auth, alerts)
-│       ├── hooks/
-│       │   ├── useWebSocket.ts      # WS connection, reconnection, tick/alert callbacks
-│       │   ├── useAuth.ts           # JWT + user state (localStorage)
-│       │   └── useTickerData.ts     # Historical data fetch + live candle merging
-│       ├── components/
-│       │   ├── Header.tsx           # Brand, connection status, bell notifications, avatar
-│       │   ├── Dashboard.tsx        # CSS Grid layout (sidebar + main)
-│       │   ├── TickerList.tsx       # Watchlist with search + WS price updates
-│       │   ├── TickerCard.tsx       # Individual ticker row with alert bell icon
-│       │   ├── TickerInfoBar.tsx    # Selected ticker detail bar (price, 24h stats)
-│       │   ├── IntervalSelector.tsx # Timeframe + chart type toggle
-│       │   ├── PriceChart.tsx       # TradingView Lightweight Charts integration
-│       │   ├── AlertModal.tsx       # Manage / create / edit alerts modal
-│       │   └── LoginModal.tsx       # Sign-in modal
-│       └── styles/index.css         # Global dark theme styles
-```
+![Architecture Diagram](documentation-assets/architecture-diagram.png)
 
-### System Diagram
+**Backend (Express + WebSocket, port 4000)**
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                              BACKEND  :4000                                 │
-│                                                                             │
-│  ┌─────────────────────┐                            ┌────────────────────┐  │
-│  │  MarketDataGenerator │────── emits tick ────────►│    WsHandler       │  │
-│  │  (GBM simulation)    │───┐                   ┌──►│  WebSocket :4000/ws│  │
-│  │  1s tick interval    │   │                   │   └────────┬───────────┘  │
-│  └──────────────────────┘   │                   │            │              │
-│             │               │                   │            │ sends to     │
-│             │  emits tick   │  emits tick        │            │ browser:     │
-│             ▼               ▼                   │            │              │
-│  ┌──────────────────┐  ┌──────────────────┐     │            │              │
-│  │ HistoricalData   │  │  AlertService    │     │  ┌─────────┴─────────┐   │
-│  │ Service          │  │  (threshold      │     │  │  price_update     │   │
-│  │ (OHLCV candles   │  │   crossing       │     │  │  (subscribed only)│   │
-│  │  + LRU cache)    │  │   detection)     │     │  │                   │   │
-│  └──────────────────┘  └────────┬─────────┘     │  │  alert_triggered  │   │
-│                                 │               │  │  (all clients)    │   │
-│                                 │  trigger      │  └───────────────────┘   │
-│                                 │  callback     │                          │
-│                                 └───────────────┘                          │
-│                                                                             │
-│  ┌─────────────────────────────────────────────────────────────────┐        │
-│  │                     Express REST API                            │        │
-│  │                                                                 │        │
-│  │   /api/auth/login     /api/tickers     /api/tickers/:sym/history│        │
-│  │   /api/alerts (CRUD, JWT-protected)    /api/health              │        │
-│  └─────────────────────────────────────────────────────────────────┘        │
-└─────────────────────────────────────────────────────────────────────────────┘
-                    │ HTTP                              │ WebSocket
-                    ▼                                   ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                            FRONTEND  :3000                                  │
-│                                                                             │
-│  ┌──────────────┐   ┌───────────────────────────────────────────────────┐   │
-│  │  api.ts      │   │  useWebSocket hook                                │   │
-│  │  (REST calls)│   │  ┌─────────────┐    ┌──────────────────────────┐  │   │
-│  └──────┬───────┘   │  │  onTick     │    │  onAlert                 │  │   │
-│         │           │  │  callback   │    │  callback                │  │   │
-│         │           │  └──────┬──────┘    └────────────┬─────────────┘  │   │
-│         │           └─────────┼────────────────────────┼────────────────┘   │
-│         │                     │                        │                    │
-│         ▼                     ▼                        ▼                    │
-│  ┌─────────────────────────────────────────────────────────────────────┐    │
-│  │                         App.tsx                                     │    │
-│  │                                                                     │    │
-│  │  ┌──────────┐  ┌───────────┐  ┌──────────────┐  ┌──────────────┐  │    │
-│  │  │ Header   │  │ TickerList│  │ PriceChart   │  │ AlertModal   │  │    │
-│  │  │ (bell    │  │ (watchlist│  │ (TradingView │  │ (manage/     │  │    │
-│  │  │  notifs) │  │  + prices)│  │  Lightweight)│  │  create/edit)│  │    │
-│  │  └──────────┘  └───────────┘  └──────────────┘  └──────────────┘  │    │
-│  │                                                                     │    │
-│  │  ┌──────────────┐  ┌──────────────────┐  ┌──────────────────────┐  │    │
-│  │  │TickerInfoBar │  │IntervalSelector  │  │ LoginModal           │  │    │
-│  │  │(24h stats)   │  │(1m-1d + chart)   │  │ (JWT auth)          │  │    │
-│  │  └──────────────┘  └──────────────────┘  └──────────────────────┘  │    │
-│  └─────────────────────────────────────────────────────────────────────┘    │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+- `MarketDataGenerator` — ticks every second using GBM, emits price events
+- `HistoricalDataService` — generates and LRU-caches 30 days of OHLCV candles
+- `AlertService` — checks threshold crossings on each tick, fires callbacks
+- `WsHandler` — manages subscriptions, broadcasts `price_update` and `alert_triggered`
+- REST API — auth, ticker snapshots, history, alert CRUD
 
-## Setup
+**Frontend (React + Vite, port 3000)**
+
+- `useWebSocket` — connection management, `onTick`/`onAlert` callbacks
+- `api.ts` — REST client
+- `App.tsx` — top-level state and layout
+- Components: `TickerList`, `PriceChart`, `AlertModal`, `TickerInfoBar`, `IntervalSelector`, `LoginModal`, `Header`
+
+## Tech Stack
+
+| Layer       | Technology                                                   |
+| ----------- | ------------------------------------------------------------ |
+| Frontend    | React 19, TypeScript, Vite 6, TradingView Lightweight Charts |
+| Backend     | Node.js, Express, TypeScript, ws                             |
+| Auth        | JWT (mock)                                                   |
+| Caching     | LRU Cache                                                    |
+| Testing     | Jest, ts-jest, Supertest                                     |
+| Dev Tooling | tsx (watch mode), ESLint, Prettier                           |
+
+## Setup & Running
 
 ### Prerequisites
 
@@ -135,289 +84,75 @@ real-time-trading-dashboard/
 ### Installation
 
 ```bash
-# Clone the repository
 git clone <repo-url>
 cd real-time-trading-dashboard
 
-# Install backend dependencies
-cd backend
-npm install
-
-# Install frontend dependencies
-cd ../frontend
-npm install
+cd backend && npm install
+cd ../frontend && npm install
 ```
 
-### Running in Development
-
-Start both servers in separate terminals:
+### Running the Backend
 
 ```bash
-# Terminal 1 — Backend (port 4000)
 cd backend
 npm run dev
+```
 
-# Terminal 2 — Frontend (port 3000)
+Starts on [http://localhost:4000](http://localhost:4000). WebSocket at `ws://localhost:4000/ws`.
+
+### Running the Frontend
+
+```bash
 cd frontend
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Opens on [http://localhost:3000](http://localhost:3000).
 
-### Running Tests
+### Login Credentials
+
+| Username | Password |
+| -------- | -------- |
+| `admin`  | `admin`  |
+
+### Environment Variables
+
+All optional — defaults work out of the box.
+
+| Variable       | Default                         | Description          |
+| -------------- | ------------------------------- | -------------------- |
+| `PORT`         | `4000`                          | Backend port         |
+| `JWT_SECRET`   | `dev-secret-do-not-use-in-prod` | JWT signing secret   |
+| `VITE_API_URL` | `http://localhost:4000`         | Frontend API base    |
+| `VITE_WS_URL`  | `ws://localhost:4000/ws`        | Frontend WS endpoint |
+
+## Running Tests
 
 ```bash
 cd backend
 npm test
 ```
 
-### Environment Variables
+Watch mode:
 
-All variables are optional — sensible defaults are provided.
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PORT` | `4000` | Backend server port |
-| `JWT_SECRET` | `dev-secret-do-not-use-in-prod` | Secret for signing JWTs |
-| `VITE_API_URL` | `http://localhost:4000` | Frontend API base URL |
-| `VITE_WS_URL` | `ws://localhost:4000/ws` | Frontend WebSocket URL |
-
-### Mock Login Credentials
-
-| Username | Password |
-|----------|----------|
-| `admin` | `password` |
-
-## API Reference
-
-Base URL: `http://localhost:4000`
-
-### Health Check
-
-```
-GET /api/health
+```bash
+cd backend
+npm run test:watch
 ```
 
-**Response:** `{ "status": "ok", "timestamp": 1711234567890 }`
+## Assumptions & Trade-offs
 
----
+**Assumptions**
 
-### Authentication
+- All prices are simulated (GBM) — no real exchange connections. This is by design so the project is fully self-contained with zero external dependencies.
+- Single-user system. Alerts aren't partitioned by user — the mock auth is there to show the JWT pattern, not to be production-grade.
+- Desktop-first. The layout is responsive but hasn't been fine-tuned for mobile.
+- Everything is in-memory. Restart the server and all data (prices, alerts, candles) resets.
 
-```
-POST /api/auth/login
-```
+**Trade-offs**
 
-**Body:**
-
-```json
-{ "username": "admin", "password": "admin" }
-```
-
-**200 Response:**
-
-```json
-{
-  "token": "eyJhbGciOiJIUzI1NiIs...",
-  "user": { "id": "1", "username": "admin", "displayName": "Neha Chaudhary" }
-}
-```
-
-**401:** `{ "error": "Invalid credentials" }`
-
----
-
-### Tickers
-
-```
-GET /api/tickers
-```
-
-**200 Response:** Array of `TickerSnapshot`
-
-```json
-[
-  {
-    "symbol": "BTC/USDT",
-    "fullName": "Bitcoin",
-    "iconColor": "#f7931a",
-    "price": 87250.42,
-    "change": 123.50,
-    "changePercent": 0.14,
-    "high24h": 87464.46,
-    "low24h": 87159.96,
-    "volume24h": 1580000,
-    "timestamp": 1711234567890
-  }
-]
-```
-
----
-
-```
-GET /api/tickers/:symbol/history?interval=1h&days=30
-```
-
-| Param | Type | Default | Description |
-|-------|------|---------|-------------|
-| `interval` | `1m \| 5m \| 15m \| 1h \| 4h \| 1d` | `1h` | Candle interval |
-| `days` | `number` | `30` | History lookback |
-
-**200 Response:**
-
-```json
-{
-  "symbol": "BTC/USDT",
-  "interval": "1h",
-  "count": 720,
-  "candles": [
-    { "time": 1711000000, "open": 87100, "high": 87300, "low": 87050, "close": 87250, "volume": 2500 }
-  ]
-}
-```
-
-**400:** Invalid interval | **404:** Unknown symbol
-
----
-
-### Alerts (JWT Required)
-
-All alert endpoints require header: `Authorization: Bearer <token>`
-
-```
-GET /api/alerts
-```
-
-**200 Response:** Array of `Alert`
-
-```json
-[
-  {
-    "id": "uuid",
-    "symbol": "ETH/USDT",
-    "threshold": 3200,
-    "direction": "above",
-    "frequency": "every_time",
-    "triggered": false,
-    "triggerCount": 0,
-    "createdAt": 1711234567890
-  }
-]
-```
-
----
-
-```
-POST /api/alerts
-```
-
-**Body:**
-
-```json
-{
-  "symbol": "ETH/USDT",
-  "threshold": 3200,
-  "direction": "above",
-  "frequency": "every_time"
-}
-```
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `symbol` | `string` | Yes | Ticker symbol |
-| `threshold` | `number` | Yes | Target price |
-| `direction` | `"above" \| "below"` | Yes | Trigger direction |
-| `frequency` | `"once" \| "every_time"` | No (default `once`) | Re-trigger on each crossing or fire once |
-
-**201 Response:** Created `Alert` object
-
----
-
-```
-DELETE /api/alerts/:id
-```
-
-**200:** `{ "ok": true }` | **404:** `{ "error": "Alert not found" }`
-
-## WebSocket Protocol
-
-**Endpoint:** `ws://localhost:4000/ws`
-
-### Client → Server
-
-**Subscribe to price updates:**
-
-```json
-{ "type": "subscribe", "symbols": ["BTC/USDT", "ETH/USDT"] }
-```
-
-**Unsubscribe:**
-
-```json
-{ "type": "unsubscribe", "symbols": ["BTC/USDT"] }
-```
-
-### Server → Client
-
-**Price update** (sent every ~1s for subscribed symbols):
-
-```json
-{
-  "type": "price_update",
-  "data": {
-    "symbol": "BTC/USDT",
-    "price": 87363.17,
-    "change": -76.07,
-    "changePercent": -0.09,
-    "high24h": 87464.46,
-    "low24h": 87159.96,
-    "volume24h": 1580000,
-    "timestamp": 1711234567890
-  }
-}
-```
-
-**Alert triggered** (broadcast to all connected clients when an alert's threshold is crossed):
-
-```json
-{
-  "type": "alert_triggered",
-  "data": {
-    "symbol": "ETH/USDT",
-    "threshold": 3200,
-    "direction": "above",
-    "currentPrice": 3201.45
-  }
-}
-```
-
-### Server acknowledgements
-
-**On subscribe:**
-
-```json
-{ "type": "subscribed", "symbols": ["BTC/USDT", "ETH/USDT"] }
-```
-
-**On unsubscribe:**
-
-```json
-{ "type": "unsubscribed", "symbols": ["BTC/USDT"] }
-```
-
-### Connection behavior
-
-- The server pings clients every 30 seconds; unresponsive clients are dropped
-- The frontend auto-reconnects with exponential backoff (1s → 30s max)
-
-
-## Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| Frontend | React 19, TypeScript, Vite, TradingView Lightweight Charts |
-| Backend | Node.js, Express, TypeScript, ws (WebSocket) |
-| Auth | JSON Web Tokens (mock) |
-| Caching | LRU Cache (historical data) |
-| Testing | Jest, ts-jest, Supertest |
-| Dev tooling | tsx (watch mode), ESLint |
+- **In-memory over a database**: No Postgres/Redis setup needed, but nothing persists across restarts. Keeps the project zero-config.
+- **Simulated prices over a real API**: Full control over tick rate, no API keys or rate limits to deal with. Prices aren't real, but that's fine for a demo.
+- **Mock auth over full auth**: JWT issuance and middleware are real, but there's no registration, refresh tokens, or proper password hashing. Didn't want auth complexity to overshadow the actual dashboard.
+- **No automation tests**: Would add React Testing Library / Cypress if this were going to production.
+- **Alerts broadcast to all clients**: `alert_triggered` goes to every connected client, not just the owner. Fine for single-user; would need scoping in a multi-user setup.
