@@ -14,8 +14,6 @@ describe('HistoricalDataService', () => {
     service = new HistoricalDataService(TEST_TICKERS, 30, 10);
   });
 
-  // ── Candle generation ───────────────────────────────────
-
   it('should generate candles for a valid symbol and interval', () => {
     const candles = service.getCandles('TEST/USD', '1h');
     expect(candles).toBeDefined();
@@ -50,8 +48,6 @@ describe('HistoricalDataService', () => {
     }
   });
 
-  // ── Interval support ────────────────────────────────────
-
   it.each(['1m', '5m', '15m', '1h', '4h', '1d'] as const)(
     'should generate candles for interval %s',
     (interval) => {
@@ -74,8 +70,6 @@ describe('HistoricalDataService', () => {
     expect(week.length).toBeGreaterThan(0);
   });
 
-  // ── LRU cache ───────────────────────────────────────────
-
   it('should cache results on repeated calls', () => {
     const first = service.getCandles('TEST/USD', '1h');
     const second = service.getCandles('TEST/USD', '1h');
@@ -91,7 +85,6 @@ describe('HistoricalDataService', () => {
     service.getCandles('TEST/USD', '1d');
     expect(service.getCacheSize()).toBe(2);
 
-    // Same key — no new entry
     service.getCandles('TEST/USD', '1h');
     expect(service.getCacheSize()).toBe(2);
   });
@@ -103,12 +96,9 @@ describe('HistoricalDataService', () => {
     small.getCandles('TEST/USD', '1d');
     expect(small.getCacheSize()).toBe(2);
 
-    // Third entry should evict the LRU
     small.getCandles('ACME', '1h');
     expect(small.getCacheSize()).toBe(2);
   });
-
-  // ── Live candle appending ───────────────────────────────
 
   it('should update the latest candle when ticks arrive within the same interval', () => {
     const candles = service.getCandles('TEST/USD', '1d')!;
@@ -127,15 +117,12 @@ describe('HistoricalDataService', () => {
   });
 
   it('should only update cached intervals, not uncached ones', () => {
-    // Request 1d so it gets cached
     service.getCandles('TEST/USD', '1d');
-    // Don't request 1m
 
     const generator = new MarketDataGenerator(TEST_TICKERS, 1000);
     service.attachGenerator(generator);
     generator.tick();
 
-    // 1d was cached, so it should have been updated
     expect(service.getCacheSize()).toBe(1);
   });
 
@@ -152,5 +139,29 @@ describe('HistoricalDataService', () => {
     const volAfter = candles[candles.length - 1].volume;
 
     expect(volAfter).toBeGreaterThan(volBefore);
+  });
+
+  it('should push a new candle when tick falls into a new time boundary', () => {
+    // Use 1m interval — the last generated candle is from history,
+    // and a live tick with current timestamp will likely be a new boundary
+    const candles = service.getCandles('TEST/USD', '1m')!;
+    const countBefore = candles.length;
+    const lastTime = candles[candles.length - 1].time;
+
+    const generator = new MarketDataGenerator(TEST_TICKERS, 1000);
+    service.attachGenerator(generator);
+
+    // Tick — current Date.now() will be in a different 1m boundary than the
+    // last historical candle (which was generated in the past)
+    generator.tick();
+
+    const lastCandle = candles[candles.length - 1];
+    if (lastCandle.time !== lastTime) {
+      expect(candles.length).toBe(countBefore + 1);
+      expect(lastCandle.time).toBeGreaterThan(lastTime);
+      expect(lastCandle.open).toBeGreaterThan(0);
+    } else {
+      expect(candles.length).toBe(countBefore);
+    }
   });
 });

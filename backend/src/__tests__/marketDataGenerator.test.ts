@@ -17,8 +17,6 @@ describe('MarketDataGenerator', () => {
     generator.stop();
   });
 
-  // ── Tick validity ───────────────────────────────────────
-
   it('should produce a valid PriceTick on manual tick()', () => {
     generator.tick();
     const snap = generator.getSnapshot('TEST/USD');
@@ -55,8 +53,6 @@ describe('MarketDataGenerator', () => {
     expect(snap!.price).toBeGreaterThan(0);
   });
 
-  // ── Event emission ──────────────────────────────────────
-
   it('should emit "tick" event for every ticker on each tick()', () => {
     const received: PriceTick[] = [];
     generator.on('tick', (t: PriceTick) => received.push(t));
@@ -76,8 +72,6 @@ describe('MarketDataGenerator', () => {
     expect(received).toHaveLength(1);
     expect(received[0].symbol).toBe('ACME');
   });
-
-  // ── 24H stat tracking ──────────────────────────────────
 
   it('should track high24h correctly across ticks', () => {
     for (let i = 0; i < 100; i++) generator.tick();
@@ -110,8 +104,6 @@ describe('MarketDataGenerator', () => {
     expect(snap1.change).toBeCloseTo(expectedChange, 1);
   });
 
-  // ── Start / stop lifecycle ─────────────────────────────
-
   it('should start and stop the interval timer', () => {
     expect(generator.isRunning()).toBe(false);
 
@@ -124,7 +116,7 @@ describe('MarketDataGenerator', () => {
 
   it('should not start duplicate timers', () => {
     generator.start();
-    generator.start(); // no-op
+    generator.start();
     expect(generator.isRunning()).toBe(true);
     generator.stop();
   });
@@ -138,9 +130,28 @@ describe('MarketDataGenerator', () => {
 
     setTimeout(() => {
       fast.stop();
-      // 2 tickers × at least 2 intervals ≈ ≥4 ticks
       expect(received.length).toBeGreaterThanOrEqual(4);
       done();
     }, 180);
+  });
+
+  it('should reset 24h stats when the window rolls over', () => {
+    generator.tick();
+    const snapBefore = generator.getSnapshot('TEST/USD')!;
+    expect(snapBefore.volume24h).toBeGreaterThan(0);
+
+    // Advance Date.now by >24h so the reset branch fires
+    const MS_24H = 24 * 60 * 60 * 1000;
+    const realNow = Date.now;
+    Date.now = () => realNow() + MS_24H + 1000;
+
+    generator.tick();
+
+    const snapAfter = generator.getSnapshot('TEST/USD')!;
+    // openPrice resets with the window, so change% should be near zero after one tick
+    expect(typeof snapAfter.volume24h).toBe('number');
+    expect(Math.abs(snapAfter.changePercent)).toBeLessThan(5);
+
+    Date.now = realNow;
   });
 });

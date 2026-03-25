@@ -30,9 +30,30 @@ describe('Ticker REST routes', () => {
     generator.stop();
   });
 
-  // ── GET /api/tickers ────────────────────────────────────
-
   describe('GET /api/tickers', () => {
+    it('should return fallback values when generator has no snapshots yet', async () => {
+      const freshGen = new MarketDataGenerator(TEST_TICKERS, 100_000);
+      const freshHistory = new HistoricalDataService(TEST_TICKERS, 1, 2);
+      const freshApp = express();
+      freshApp.use(express.json());
+      freshApp.use('/api/tickers', createTickerRouter(freshGen, freshHistory, TEST_TICKERS));
+
+      // No ticks: getSnapshot is undefined, route uses definition basePrice
+      const res = await request(freshApp).get('/api/tickers');
+
+      expect(res.status).toBe(200);
+      const btc = res.body.find((t: { symbol: string }) => t.symbol === 'BTC/USDT');
+      expect(btc.price).toBe(87_250);
+      expect(btc.change).toBe(0);
+      expect(btc.changePercent).toBe(0);
+      expect(btc.high24h).toBe(87_250);
+      expect(btc.low24h).toBe(87_250);
+      expect(btc.volume24h).toBe(0);
+      expect(typeof btc.timestamp).toBe('number');
+
+      freshGen.stop();
+    });
+
     it('should return 200 with an array of ticker snapshots', async () => {
       const res = await request(app).get('/api/tickers');
 
@@ -57,8 +78,6 @@ describe('Ticker REST routes', () => {
       expect(typeof btc.timestamp).toBe('number');
     });
   });
-
-  // ── GET /api/tickers/:symbol/history ────────────────────
 
   describe('GET /api/tickers/:symbol/history', () => {
     it('should return candles with default interval (1h)', async () => {

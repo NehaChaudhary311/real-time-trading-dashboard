@@ -50,8 +50,6 @@ describe('WsHandler', () => {
     return new WebSocket(`ws://localhost:${port}/ws`);
   }
 
-  // ── Connection ──────────────────────────────────────────
-
   it('should accept WebSocket connections', async () => {
     const ws = connect();
     await waitForOpen(ws);
@@ -70,8 +68,6 @@ describe('WsHandler', () => {
     await new Promise((r) => setTimeout(r, 100));
     expect(handler.getClientCount()).toBe(countBefore - 1);
   });
-
-  // ── Subscribe / Unsubscribe ─────────────────────────────
 
   it('should acknowledge subscribe with current subscriptions', async () => {
     const ws = connect();
@@ -102,8 +98,6 @@ describe('WsHandler', () => {
     expect(msg.symbols).toEqual(['TEST/USD']);
     ws.close();
   });
-
-  // ── Price updates ───────────────────────────────────────
 
   it('should broadcast price_update only for subscribed symbols', async () => {
     const ws = connect();
@@ -138,22 +132,18 @@ describe('WsHandler', () => {
     ws.send(JSON.stringify({ type: 'subscribe', symbols: ['TEST/USD'] }));
     await subPromise;
 
-    // Collect all messages for 200ms after a tick
     const received: Record<string, unknown>[] = [];
     ws.on('message', (raw) => received.push(JSON.parse(raw.toString())));
 
     generator.tick();
     await new Promise((r) => setTimeout(r, 200));
 
-    // Should only get TEST/USD, not ACME
     const symbols = received
       .filter((m) => m.type === 'price_update')
       .map((m) => (m.data as Record<string, unknown>).symbol);
     expect(symbols).not.toContain('ACME');
     ws.close();
   });
-
-  // ── Error handling ──────────────────────────────────────
 
   it('should return error for invalid JSON', async () => {
     const ws = connect();
@@ -173,11 +163,96 @@ describe('WsHandler', () => {
     await waitForOpen(ws);
 
     const msgPromise = waitForMessage(ws);
-    ws.send(JSON.stringify({ type: 'subscribe' })); // missing symbols
+    ws.send(JSON.stringify({ type: 'subscribe' }));
     const msg = await msgPromise;
 
     expect(msg.type).toBe('error');
     expect(msg.message).toMatch(/Invalid message/);
     ws.close();
+  });
+
+  it('should broadcast message to all connected clients via broadcastAll', async () => {
+    const ws1 = connect();
+    const ws2 = connect();
+    await waitForOpen(ws1);
+    await waitForOpen(ws2);
+
+    const msg1Promise = waitForMessage(ws1);
+    const msg2Promise = waitForMessage(ws2);
+
+    handler.broadcastAll({
+      type: 'alert_triggered',
+      data: { symbol: 'TEST/USD', threshold: 150, direction: 'above', currentPrice: 155 },
+    });
+
+    const [msg1, msg2] = await Promise.all([msg1Promise, msg2Promise]);
+
+    expect(msg1.type).toBe('alert_triggered');
+    expect(msg2.type).toBe('alert_triggered');
+    expect((msg1.data as Record<string, unknown>).symbol).toBe('TEST/USD');
+    expect((msg2.data as Record<string, unknown>).currentPrice).toBe(155);
+
+    ws1.close();
+    ws2.close();
+  });
+
+  it('should work via the fromWss static factory', async () => {
+    const httpServer2 = createServer();
+    const generator2 = new MarketDataGenerator(TEST_TICKERS, 100_000);
+    const wss2 = new WebSocketServer({ server: httpServer2, path: '/ws2' });
+    const handler2 = WsHandler.fromWss(wss2, generator2);
+
+    await new Promise<void>((resolve) => {
+      httpServer2.listen(0, () => resolve());
+    });
+    const addr2 = httpServer2.address();
+    const port2 = typeof addr2 === 'object' && addr2 ? addr2.port : 0;
+
+    const ws = new WebSocket(`ws://localhost:${port2}/ws2`);
+    await waitForOpen(ws);
+
+    expect(handler2.getClientCount()).toBe(1);
+
+    const subPromise = waitForMessage(ws);
+    ws.send(JSON.stringify({ type: 'subscribe', symbols: ['TEST/USD'] }));
+    const msg = await subPromise;
+    expect(msg.type).toBe('subscribed');
+
+    ws.close();
+    await new Promise((r) => setTimeout(r, 50));
+    handler2.close();
+    generator2.stop();
+    await new Promise<void>((resolve) => httpServer2.close(() => resolve()));
+  });
+
+  it('should drop unresponsive clients on heartbeat', async () => {
+    const httpServer3 = createServer();
+    const generator3 = new MarketDataGenerator(TEST_TICKERS, 100_000);
+    const handler3 = new WsHandler(httpServer3, generator3);
+
+    await new Promise<void>((resolve) => {
+      httpServer3.listen(0, () => resolve());
+    });
+    const addr3 = httpServer3.address();
+    const port3 = typeof addr3 === 'object' && addr3 ? addr3.port : 0;
+
+    const ws = new WebSocket(`ws://localhost:${port3}/ws`);
+    await waitForOpen(ws);
+
+    expect(handler3.getClientCount()).toBe(1);
+
+    // Suppress pong responses so the client appears unresponsive
+    ws.pong = () => {};
+
+    // Private heartbeat: first call pings; second call drops client that never pongs
+    (handler3 as unknown as { heartbeat: () => void }).heartbeat();
+    (handler3 as unknown as { heartbeat: () => void }).heartbeat();
+
+    await new Promise((r) => setTimeout(r, 100));
+    expect(handler3.getClientCount()).toBe(0);
+
+    handler3.close();
+    generator3.stop();
+    await new Promise<void>((resolve) => httpServer3.close(() => resolve()));
   });
 });
