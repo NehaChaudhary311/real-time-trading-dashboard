@@ -9,14 +9,13 @@ export interface Notification {
 
 interface HeaderProps {
   connected: boolean;
-  user: AuthUser | null;
+  user: AuthUser;
   notifications: Notification[];
-  onLoginClick: () => void;
   onLogout: () => void;
   onClearNotifications: () => void;
 }
 
-export default function Header({ connected, user, notifications, onLoginClick, onLogout, onClearNotifications }: HeaderProps) {
+export default function Header({ connected, user, notifications, onLogout, onClearNotifications }: HeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [bellOpen, setBellOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -89,26 +88,15 @@ export default function Header({ connected, user, notifications, onLoginClick, o
 
         {/* Avatar + dropdown */}
         <div className="avatar-wrapper" ref={menuRef}>
-          {user ? (
-            <div
-              className="header-avatar"
-              onClick={() => setMenuOpen((o) => !o)}
-              style={{ cursor: 'pointer' }}
-            >
-              {user.displayName.charAt(0).toUpperCase()}
-            </div>
-          ) : (
-            <div
-              className="header-avatar"
-              title="Sign in"
-              onClick={onLoginClick}
-              style={{ cursor: 'pointer', opacity: 0.5 }}
-            >
-              ?
-            </div>
-          )}
+          <div
+            className="header-avatar"
+            onClick={() => setMenuOpen((o) => !o)}
+            style={{ cursor: 'pointer' }}
+          >
+            {user.displayName.charAt(0).toUpperCase()}
+          </div>
 
-          {menuOpen && user && (
+          {menuOpen && (
             <div className="avatar-menu">
               <div className="avatar-menu-name">{user.displayName}</div>
               <div className="avatar-menu-username">@{user.username}</div>

@@ -8,7 +8,6 @@ const baseProps = {
   connected: true,
   user: { id: '1', username: 'admin', displayName: 'Neha Chaudhary' },
   notifications: [] as Notification[],
-  onLoginClick: vi.fn(),
   onLogout: vi.fn(),
   onClearNotifications: vi.fn(),
 };
@@ -36,19 +35,6 @@ describe('Header', () => {
   it('should show user initial when logged in', () => {
     render(<Header {...baseProps} />);
     expect(screen.getByText('N')).toBeInTheDocument();
-  });
-
-  it('should show "?" when no user', () => {
-    render(<Header {...baseProps} user={null} />);
-    expect(screen.getByText('?')).toBeInTheDocument();
-  });
-
-  it('should call onLoginClick when "?" avatar is clicked', async () => {
-    const user = userEvent.setup();
-    render(<Header {...baseProps} user={null} />);
-
-    await user.click(screen.getByText('?'));
-    expect(baseProps.onLoginClick).toHaveBeenCalled();
   });
 
   it('should open user menu when avatar is clicked', async () => {

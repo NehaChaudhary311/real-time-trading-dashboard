@@ -23,7 +23,6 @@ function App() {
   const [selectedSymbol, setSelectedSymbol] = useState('BTC/USDT');
   const [interval, setInterval] = useState<Interval>('1h');
   const [chartType, setChartType] = useState<ChartType>('candlestick');
-  const [showLogin, setShowLogin] = useState(false);
 
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -55,9 +54,8 @@ function App() {
   }, [auth.user]);
 
   const handleAlertClick = useCallback((symbol: string) => {
-    if (!auth.user) { setShowLogin(true); return; }
     setAlertSymbol(symbol);
-  }, [auth.user]);
+  }, []);
 
   const handleAlertSubmit = useCallback(async (threshold: number, direction: AlertDirection, frequency: AlertFrequency) => {
     if (!auth.user || !alertSymbol) return;
@@ -123,7 +121,6 @@ function App() {
         connected={ws.connected}
         user={auth.user}
         notifications={notifications}
-        onLoginClick={() => setShowLogin(true)}
         onLogout={auth.logout}
         onClearNotifications={clearNotifications}
       />
@@ -152,13 +149,6 @@ function App() {
           ws={ws}
         />
       </Dashboard>
-
-      {showLogin && (
-        <LoginModal
-          onLogin={auth.login}
-          onClose={() => setShowLogin(false)}
-        />
-      )}
 
       {alertSymbol && (
         <AlertModal
