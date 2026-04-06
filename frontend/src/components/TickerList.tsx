@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import TickerCard from './TickerCard';
 import { fetchTickers } from '../services/api';
 import type { TickerSnapshot, PriceTick, Alert } from '../types';
@@ -14,12 +14,20 @@ interface TickerListProps {
 
 export default function TickerList({ ws, selectedSymbol, onSelect, onAlertClick, activeAlerts }: TickerListProps) {
   const [tickers, setTickers] = useState<TickerSnapshot[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [search, setSearch] = useState('');
 
-  useEffect(() => {
+  const loadTickers = useCallback(() => {
+    setLoading(true);
+    setError(false);
     fetchTickers()
-      .then(setTickers)
-      .catch(() => {});
+      .then((data) => { setTickers(data); setLoading(false); })
+      .catch(() => { setError(true); setLoading(false); });
+  }, []);
+
+  useEffect(() => {
+    loadTickers();
   }, []);
 
   useEffect(() => {
@@ -54,17 +62,70 @@ export default function TickerList({ ws, selectedSymbol, onSelect, onAlertClick,
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ws.onTick, handleTick]);
 
-  const alertSymbols = new Set(
-    (activeAlerts ?? []).map((a) => a.symbol),
+  const alertSymbols = useMemo(
+    () => new Set((activeAlerts ?? []).map((a) => a.symbol)),
+    [activeAlerts],
   );
 
-  const filtered = search
-    ? tickers.filter(
-        (t) =>
-          t.symbol.toLowerCase().includes(search.toLowerCase()) ||
-          t.fullName.toLowerCase().includes(search.toLowerCase()),
-      )
-    : tickers;
+  const filtered = useMemo(
+    () =>
+      search
+        ? tickers.filter(
+            (t) =>
+              t.symbol.toLowerCase().includes(search.toLowerCase()) ||
+              t.fullName.toLowerCase().includes(search.toLowerCase()),
+          )
+        : tickers,
+    [tickers, search],
+  );
+
+  function renderList() {
+    if (loading) {
+      return Array.from({ length: 6 }, (_, i) => (
+        <div key={i} className="ticker-card skeleton-card">
+          <div className="ticker-card-main">
+            <div className="skeleton skeleton-icon" />
+            <div className="ticker-info">
+              <div className="skeleton skeleton-line-short" />
+              <div className="skeleton skeleton-line-shorter" />
+            </div>
+            <div className="ticker-price-col">
+              <div className="skeleton skeleton-line-price" />
+              <div className="skeleton skeleton-line-change" />
+            </div>
+          </div>
+        </div>
+      ));
+    }
+
+    if (error) {
+      return (
+        <div className="ticker-list-empty">
+          <span>Failed to load tickers</span>
+          <button className="ticker-list-retry" onClick={loadTickers}>Retry</button>
+        </div>
+      );
+    }
+
+    if (filtered.length === 0) {
+      return (
+        <div className="ticker-list-empty">
+          {search ? `No results for "${search}"` : 'No tickers available'}
+        </div>
+      );
+    }
+
+    return filtered.map((t) => (
+      <TickerCard
+        key={t.symbol}
+        ticker={t}
+        selected={t.symbol === selectedSymbol}
+        onClick={() => onSelect(t.symbol)}
+        onAlertClick={onAlertClick}
+        hasActiveAlert={alertSymbols.has(t.symbol)}
+      />
+    ));
+  }
 
   return (
     <>
@@ -80,32 +141,7 @@ export default function TickerList({ ws, selectedSymbol, onSelect, onAlertClick,
         />
       </div>
       <div className={`ticker-list${ws.connected ? '' : ' stale'}`}>
-        {tickers.length === 0
-          ? Array.from({ length: 6 }, (_, i) => (
-              <div key={i} className="ticker-card skeleton-card">
-                <div className="ticker-card-main">
-                  <div className="skeleton skeleton-icon" />
-                  <div className="ticker-info">
-                    <div className="skeleton skeleton-line-short" />
-                    <div className="skeleton skeleton-line-shorter" />
-                  </div>
-                  <div className="ticker-price-col">
-                    <div className="skeleton skeleton-line-price" />
-                    <div className="skeleton skeleton-line-change" />
-                  </div>
-                </div>
-              </div>
-            ))
-          : filtered.map((t) => (
-              <TickerCard
-                key={t.symbol}
-                ticker={t}
-                selected={t.symbol === selectedSymbol}
-                onClick={() => onSelect(t.symbol)}
-                onAlertClick={onAlertClick}
-                hasActiveAlert={alertSymbols.has(t.symbol)}
-              />
-            ))}
+        {renderList()}
       </div>
     </>
   );

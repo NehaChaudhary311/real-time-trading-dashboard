@@ -38,6 +38,14 @@ function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ws.onTick]);
 
+  // Ensure the selected ticker is always subscribed so PriceChart and TickerInfoBar
+  // receive live ticks regardless of whether TickerList's fetch succeeded.
+  useEffect(() => {
+    if (!ws.connected) return;
+    ws.subscribe([selectedSymbol]);
+    return () => { ws.unsubscribe([selectedSymbol]); };
+  }, [ws.connected, selectedSymbol, ws.subscribe, ws.unsubscribe]);
+
   useEffect(() => {
     if (!auth.user) { setAlerts([]); return; }
     fetchAlerts()
